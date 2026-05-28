@@ -853,11 +853,14 @@ function buildHTML(forPreview) {
   if (socials.length) {
     h += `
           <tr><td height="4"></td></tr>
-          <tr height="30"><td>`;
-    socials.forEach(s => {
-      h += `<a href="${s.url}" style="display:inline-block;text-decoration:none;"><img border="0" width="25" height="25" hspace="4" src="${iImg(s.key)}" alt="${s.key}" style="display:inline-block;vertical-align:middle;"></a>`;
+          <tr><td>
+            <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tbody><tr>`;
+    socials.forEach((s, i) => {
+      const pr = i < socials.length - 1 ? 'padding-right:7px;' : '';
+      h += `<td style="vertical-align:middle;${pr}"><a href="${s.url}" style="text-decoration:none;"><img border="0" width="25" height="25" src="${iImg(s.key)}" alt="${s.key}" style="display:block;"></a></td>`;
     });
-    h += `</td></tr>`;
+    h += `</tr></tbody></table>
+          </td></tr>`;
   }
 
   h += `
