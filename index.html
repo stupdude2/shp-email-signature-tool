@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHP Email Signature Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue:       #335e82;
+  --blue-dark:  #1e3851;
+  --blue-light: #e8f0f8;
+  --gold:       #faa71a;
+  --gold-pale:  #fff8eb;
+  --bg:         #eef2f7;
+  --surface:    #ffffff;
+  --surface-2:  #f4f7fb;
+  --border:     #d0dae6;
+  --text:       #1a2a3a;
+  --muted:      #617585;
+  --font:       'DM Sans', sans-serif;
+  --mono:       'DM Mono', monospace;
+  --r:          8px;
+  --shadow:     0 2px 10px rgba(30,56,81,.09);
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:var(--font); background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; }
+
+/* HEADER */
+.hdr { background:var(--blue-dark); padding:18px 28px; display:flex; align-items:center; gap:14px; border-bottom:3px solid var(--gold); position:sticky; top:0; z-index:50; }
+.hdr-badge { width:38px; height:38px; background:var(--gold); border-radius:7px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:var(--blue-dark); flex-shrink:0; letter-spacing:.5px; }
+.hdr h1 { font-size:17px; font-weight:600; color:#fff; letter-spacing:-.2px; }
+.hdr p  { font-size:12px; color:rgba(255,255,255,.55); margin-top:2px; }
+.hdr-reset { margin-left:auto; }
+
+/* LAYOUT */
+.layout { display:grid; grid-template-columns:360px minmax(0,1fr); min-height:calc(100vh - 75px); max-width:1280px; margin:0 auto; }
+body { background:var(--bg); }
+
+/* FORM PANEL */
+.form-panel { background:var(--surface-2); border-right:1px solid var(--border); overflow-y:auto; padding:20px 16px; display:flex; flex-direction:column; gap:14px; }
+
+/* RIGHT PANEL */
+.right-panel { display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+.preview-panel { flex:1; padding:20px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; min-width:0; }
+.output-panel { background:var(--blue-dark); padding:20px 20px 24px; border-top:2.5px solid var(--gold); }
+
+/* CARDS */
+.card { background:var(--surface); border-radius:var(--r); border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; }
+.card-hdr { padding:10px 14px; background:var(--blue-dark); color:#fff; font-size:11px; font-weight:600; letter-spacing:.9px; text-transform:uppercase; display:flex; align-items:center; gap:7px; }
+.card-hdr svg { opacity:.8; flex-shrink:0; }
+.card-hdr .note { margin-left:auto; font-weight:400; font-size:10px; letter-spacing:0; text-transform:none; opacity:.6; }
+.card-body { padding:14px; display:flex; flex-direction:column; gap:11px; }
+
+/* FIELDS */
+.field { display:flex; flex-direction:column; gap:4px; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+label { font-size:11.5px; font-weight:600; color:var(--blue); letter-spacing:.15px; }
+label .hint { font-weight:400; color:var(--muted); }
+input[type=text],input[type=tel],input[type=email],input[type=url],input[type=number],textarea,select {
+  border:1.5px solid var(--border); border-radius:6px; padding:7px 10px;
+  font-family:var(--font); font-size:13px; color:var(--text); background:var(--surface);
+  transition:border-color .15s,box-shadow .15s; outline:none; width:100%;
+}
+input:focus,textarea:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(51,94,130,.12); }
+input::placeholder,textarea::placeholder { color:#b8c8d8; }
+textarea { resize:vertical; min-height:80px; line-height:1.5; font-size:12px; }
+hr.sep { border:none; border-top:1px solid var(--border); }
+
+/* TOGGLE */
+.toggle-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:4px 0; }
+.toggle-info .lbl { font-size:13px; font-weight:500; }
+.toggle-info .sub { font-size:11px; color:var(--muted); margin-top:1px; }
+.toggle { position:relative; width:40px; height:22px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; position:absolute; }
+.knob { position:absolute; inset:0; background:#ccd6e0; border-radius:22px; cursor:pointer; transition:background .2s; }
+.knob::before { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.toggle input:checked ~ .knob { background:var(--blue); }
+.toggle input:checked ~ .knob::before { transform:translateX(18px); }
+
+/* LOGO GRID */
+.logo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.logo-opt { border:2px solid var(--border); border-radius:7px; padding:8px 6px; cursor:pointer; text-align:center; transition:all .15s; background:var(--surface); }
+.logo-opt:hover { border-color:var(--blue); background:var(--blue-light); }
+.logo-opt.sel   { border-color:var(--gold); background:var(--gold-pale); box-shadow:0 0 0 3px rgba(250,167,26,.15); }
+.logo-thumb { width:100%; height:38px; border-radius:4px; display:flex; align-items:center; justify-content:center; margin-bottom:5px; overflow:hidden; background:var(--bg); }
+.logo-thumb img { max-height:32px; max-width:100%; object-fit:contain; }
+.logo-opt-lbl { font-size:10.5px; color:var(--blue); font-weight:500; }
+#custom-logo-wrap { display:none; margin-top:4px; }
+
+/* UPLOAD */
+.upload-zone { border:2px dashed var(--border); border-radius:7px; padding:18px; text-align:center; cursor:pointer; transition:all .15s; position:relative; }
+.upload-zone:hover { border-color:var(--blue); background:var(--blue-light); }
+.upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; border:0; padding:0; width:100%; height:100%; }
+.upload-zone input[type=file]:focus { box-shadow:none; }
+.photo-preview { display:none; align-items:center; gap:12px; padding:10px; background:var(--surface-2); border-radius:7px; border:1px solid var(--border); }
+.photo-preview img { width:56px; height:56px; object-fit:cover; border:2px solid var(--gold); flex-shrink:0; }
+.photo-preview .pinfo { flex:1; }
+.photo-preview .pfname { font-size:13px; font-weight:500; color:var(--text); }
+.photo-preview .pdim   { font-size:11px; color:var(--muted); }
+.photo-preview .pacts  { display:flex; gap:6px; margin-top:6px; }
+
+/* QUALITY BAR */
+.quality-row { display:grid; grid-template-columns:1fr 80px; gap:10px; align-items:end; }
+
+/* BUTTONS */
+.btn { padding:7px 14px; border:none; border-radius:6px; font-family:var(--font); font-size:12.5px; font-weight:500; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
+.btn-primary { background:var(--blue); color:#fff; }
+.btn-primary:hover { background:var(--blue-dark); }
+.btn-gold { background:var(--gold); color:var(--blue-dark); font-weight:600; }
+.btn-gold:hover { filter:brightness(1.07); }
+.btn-outlook { background:#0078d4; color:#fff; }
+.btn-outlook:hover { background:#005fa3; }
+.btn-ghost { background:rgba(255,255,255,.1); color:#fff; border:1px solid rgba(255,255,255,.2); }
+.btn-ghost:hover { background:rgba(255,255,255,.18); }
+.btn-sm { padding:5px 10px; font-size:11.5px; }
+.btn-muted { background:#e8edf3; color:var(--muted); }
+.btn-muted:hover { background:#d8e2eb; }
+
+/* STARS */
+.stars-fields { display:none; flex-direction:column; gap:10px; padding-top:6px; }
+.star-row { display:grid; grid-template-columns:14px 1fr; align-items:center; gap:8px; }
+.star-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+
+/* PREVIEW */
+.prev-label { font-size:11px; font-weight:600; letter-spacing:.7px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.email-shell { background:#fff; border-radius:10px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; max-width:100%; }
+.email-chrome { background:#f2f5f9; border-bottom:1px solid var(--border); padding:10px 16px; font-size:12px; color:var(--muted); overflow:hidden; }
+.email-chrome div { display:flex; gap:6px; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.email-chrome div:last-child { margin-bottom:0; }
+.email-chrome .lk { font-weight:600; color:var(--text); min-width:26px; }
+.email-body-text { padding:18px 20px 12px; font-family:Arial,sans-serif; font-size:14px; line-height:1.65; color:#333; }
+.email-body-text p { margin-bottom:12px; }
+.email-divider { border:none; border-top:1px solid #e2e8ef; margin:0 20px; }
+.email-sig-wrap { padding:12px 20px 20px; overflow:hidden; }
+#preview-sig { font-family:Arial,sans-serif; line-height:normal; font-size:medium; }
+
+/* TIP */
+.tip { background:var(--blue-light); border-left:3px solid var(--blue); border-radius:0 6px 6px 0; padding:10px 12px; font-size:12px; color:var(--blue); line-height:1.6; }
+
+/* OUTPUT */
+.out-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px; }
+.out-hdr-lbl { font-size:11px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; color:rgba(255,255,255,.55); }
+.out-acts { display:flex; gap:8px; flex-wrap:wrap; }
+.code-block { background:#0d1b29; border:1px solid rgba(255,255,255,.07); border-radius:7px; padding:14px 16px; font-family:var(--mono); font-size:11px; color:#7db8d9; white-space:pre-wrap; word-break:break-all; overflow-x:hidden; max-height:180px; overflow-y:auto; line-height:1.65; }
+
+/* TOAST */
+.toast { position:fixed; bottom:20px; right:20px; background:var(--blue-dark); color:#fff; padding:9px 16px; border-radius:7px; font-size:13px; font-weight:500; border-left:3px solid var(--gold); box-shadow:0 4px 20px rgba(0,0,0,.25); transform:translateY(80px); transition:transform .28s ease; z-index:999; max-width:300px; line-height:1.4; }
+.toast.show { transform:translateY(0); }
+
+/* CONF TEXTAREA */
+.conf-body { display:none; padding:0 14px 14px; }
+
+@media (max-width:860px) {
+  .layout { grid-template-columns:1fr; }
+  .right-panel { border-top:1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-badge">SHP</div>
+  <div>
+    <h1>Email Signature Generator</h1>
+    <p>Configure and generate your professional email signature</p>
+  </div>
+  <button class="btn btn-ghost btn-sm hdr-reset" onclick="resetForm()">↺ Reset</button>
+</header>
+
+<div class="layout">
+
+<!-- ══════════════════════════════════════════════
+     FORM PANEL
+══════════════════════════════════════════════ -->
+<aside class="form-panel">
+
+  <!-- Personal -->
+  <div class="card">
+    <div class="card-hdr">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Personal Information
+    </div>
+    <div class="card-body">
+      <div class="row2">
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="f-name" placeholder="Jane Smith" oninput="update()">
+        </div>
+        <div class="field">
+          <label>Credentials <span class="hint">(RN, PhD…)</span></label>
+          <input type="text" id="f-cred" placeholder="optional" oninput="update()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Job Title</label>
+        <input type="text" id="f-title" placeholder="Senior Account Manager" oninput="update()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact -->
+  <div class="card">
+    <div class="card-hdr">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 012 1.23 2 2 0 014 .06h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14v2.92z"/></svg>
+      Contact Information
+    </div>
+    <div class="card-body">
+      <div class="row2">
+        <div class="field">
+          <label>Direct Phone</label>
+          <input type="tel" id="f-direct" placeholder="(555) 123-4567" oninput="update()">
+        </div>
+        <div class="field">
+          <label>Cell Phone</label>
+          <input type="tel" id="f-cell" placeholder="(555) 987-6543" oninput="update()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="f-email" placeholder="jsmith@shpdata.com" oninput="update()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Photo & Branding -->
+  <div class="card">
+    <div class="card-hdr">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Photo &amp; Branding
+    </div>
+    <div class="card-body">
+
+      <!-- Headshot toggle -->
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="lbl">Include headshot photo</div>
+          <div class="sub">Appears above the logo in the left column</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="f-has-photo" onchange="togglePhoto()">
+          <span class="knob"></span>
+        </label>
+      </div>
+
+      <div id="photo-section" style="display:none;flex-direction:column;gap:10px;">
+        <!-- Upload zone -->
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="f-photo-file" accept="image/*" onchange="handlePhoto(this)">
+          <div style="opacity:.5;margin-bottom:6px;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#335e82" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div style="font-size:13px;font-weight:500;color:#335e82;">Upload headshot</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">Click or drag &amp; drop · JPG or PNG</div>
+        </div>
+
+        <!-- Preview after upload -->
+        <div class="photo-preview" id="photo-preview">
+          <img id="photo-thumb" src="" alt="Preview">
+          <div class="pinfo">
+            <div class="pfname" id="photo-fname">photo.jpg</div>
+            <div class="pdim" id="photo-dim">Processing…</div>
+            <div class="pacts">
+              <button class="btn btn-primary btn-sm" onclick="downloadResized()">↓ Download</button>
+              <button class="btn btn-muted btn-sm" onclick="clearPhoto()">✕ Remove</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Output size + circle mask -->
+        <div class="quality-row">
+          <div class="field">
+            <label>Output width <span class="hint">(px)</span></label>
+            <input type="number" id="f-photo-size" value="100" min="60" max="300" step="10" oninput="reprocessPhoto()">
+          </div>
+          <div style="padding-bottom:2px;">
+            <div class="toggle-row" style="padding:0;">
+              <div class="toggle-info"><div class="lbl" style="font-size:12px;">Circle</div></div>
+              <label class="toggle" style="margin-left:8px;">
+                <input type="checkbox" id="f-circle" onchange="reprocessPhoto()">
+                <span class="knob"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Headshot hosted URL <span class="hint">(used in generated HTML)</span></label>
+          <input type="url" id="f-photo-url" placeholder="https://www.shpdata.com/media/headshot.png" oninput="update()">
+        </div>
+      </div>
+
+      <hr class="sep">
+
+      <!-- Logo selector -->
+      <div class="field">
+        <label>Company Logo</label>
+        <div class="logo-grid" id="logo-grid"></div>
+        <div id="custom-logo-wrap">
+          <input type="text" id="f-custom-logo" placeholder="https://… or /media/path/logo.png" oninput="update()" style="margin-top:6px;">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Social Links -->
+  <div class="card">
+    <div class="card-hdr">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Social Links
+      <span class="note">leave blank to hide icon</span>
+    </div>
+    <div class="card-body">
+      <div class="row2">
+        <div class="field">
+          <label>LinkedIn URL</label>
+          <input type="url" id="f-linkedin" oninput="update()">
+        </div>
+        <div class="field">
+          <label>Facebook URL</label>
+          <input type="url" id="f-facebook" oninput="update()">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>X / Twitter URL</label>
+          <input type="url" id="f-twitter" oninput="update()">
+        </div>
+        <div class="field">
+          <label>Website URL</label>
+          <input type="url" id="f-website" oninput="update()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback Stars -->
+  <div class="card">
+    <div class="card-hdr">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Feedback Stars
+    </div>
+    <div class="card-body">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="lbl">Include rating stars</div>
+          <div class="sub">Customer Thermometer links above signature</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="f-stars" onchange="toggleStars()">
+          <span class="knob"></span>
+        </label>
+      </div>
+      <div class="stars-fields" id="stars-fields">
+        <div class="field">
+          <label>Prompt Text</label>
+          <input type="text" id="f-star-prompt" value="Please let us know how we did today by clicking below" oninput="update()">
+        </div>
+        <div class="star-row">
+          <div class="star-dot" style="background:#f5b800;"></div>
+          <div class="field"><label>Gold — Excellent</label>
+            <input type="url" id="f-star-gold" placeholder="https://app.customerthermometer.com/…" oninput="update()"></div>
+        </div>
+        <div class="star-row">
+          <div class="star-dot" style="background:#3db854;"></div>
+          <div class="field"><label>Green — Good</label>
+            <input type="url" id="f-star-green" placeholder="https://app.customerthermometer.com/…" oninput="update()"></div>
+        </div>
+        <div class="star-row">
+          <div class="star-dot" style="background:#e8c800;"></div>
+          <div class="field"><label>Yellow — Average</label>
+            <input type="url" id="f-star-yellow" placeholder="https://app.customerthermometer.com/…" oninput="update()"></div>
+        </div>
+        <div class="star-row">
+          <div class="star-dot" style="background:#e03535;"></div>
+          <div class="field"><label>Red — Poor</label>
+            <input type="url" id="f-star-red" placeholder="https://app.customerthermometer.com/…" oninput="update()"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="card">
+    <div class="card-hdr">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M1 12h2M21 12h2M12 1v2M12 21v2"/></svg>
+      Settings
+    </div>
+    <div class="card-body">
+      <div class="field">
+        <label>Images Base Domain</label>
+        <input type="url" id="f-base-url" value="https://www.shpdata.com" oninput="update()">
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;">Prepended to the built-in image paths. Default: https://www.shpdata.com</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confidentiality Notice -->
+  <div class="card">
+    <div class="card-hdr" style="cursor:default;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Confidentiality Notice
+    </div>
+    <div class="card-body">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="lbl">Include HIPAA disclaimer</div>
+          <div class="sub">Editable — click toggle to add &amp; customize</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="f-conf" onchange="toggleConf()" checked>
+          <span class="knob"></span>
+        </label>
+      </div>
+      <div id="conf-body">
+        <textarea id="f-conf-text" rows="5" oninput="update()">The information contained in this transmission is privileged and confidential and/or protected health information (PHI) and may be subject to protection under the law, including the Health Insurance Portability and Accountability Act of 1996, as amended (HIPAA). This transmission is intended for the sole use of the individual or entity to whom it is addressed. If you are not the intended recipient, you are notified that any use, dissemination, distribution, printing or copying of this transmission is strictly prohibited and may subject you to criminal or civil penalties. If you have received this transmission in error, please notify the sender immediately and permanently delete this email and any attachments.</textarea>
+        <button class="btn btn-muted btn-sm" style="margin-top:6px;" onclick="resetConfText()">↺ Reset to default</button>
+      </div>
+    </div>
+  </div>
+
+</aside>
+
+<!-- ══════════════════════════════════════════════
+     RIGHT PANEL
+══════════════════════════════════════════════ -->
+<div class="right-panel">
+
+  <!-- Preview -->
+  <div class="preview-panel">
+    <div class="prev-label">Live Preview</div>
+    <div class="email-shell">
+      <div class="email-chrome">
+        <div><span class="lk">From:</span><span id="prev-from">Your Name &lt;yourname@shpdata.com&gt;</span></div>
+        <div><span class="lk">To:</span><span>client@example.com</span></div>
+        <div><span class="lk">Re:</span><span>Q3 Performance Review — Follow Up</span></div>
+      </div>
+      <div class="email-body-text">
+        <p>Hi Sarah,</p>
+        <p>Thank you for your time on our call this morning. I've attached the updated benchmarking report for your review. Please don't hesitate to reach out with any questions.</p>
+        <p>Best regards,</p>
+      </div>
+      <hr class="email-divider">
+      <div class="email-sig-wrap">
+        <div id="preview-sig"></div>
+      </div>
+    </div>
+    <div class="tip">
+      <strong>Applying in Outlook:</strong> Click <strong>Copy for Outlook</strong> below, then go to
+      File → Options → Mail → Signatures → New (or edit existing) → click inside the signature box →
+      press <strong>Ctrl+V</strong>. The formatted signature will paste directly with all styling intact.
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="output-panel">
+    <div class="out-hdr">
+      <div class="out-hdr-lbl">Generated HTML</div>
+      <div class="out-acts">
+        <button class="btn btn-ghost btn-sm" onclick="downloadHTML()">↓ Download .html</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyRawHTML()">Copy Raw HTML</button>
+        <button class="btn btn-outlook" onclick="copyForOutlook()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8l10 6 10-6"/></svg>
+          Copy for Outlook
+        </button>
+      </div>
+    </div>
+    <div class="code-block" id="html-out"><!-- fill in the form above --></div>
+  </div>
+
+</div><!-- /right-panel -->
+</div><!-- /layout -->
+
+<!-- Hidden render target for Outlook copy -->
+<div id="outlook-render" style="position:fixed;top:0;left:-9999px;background:white;padding:0;"></div>
+
+<div class="toast" id="toast">✓ Done!</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  IMAGE PATHS & LOGOS
+// ═══════════════════════════════════════════════════════
+const IMG_MAP = {
+  linkedin:      'https://www.shpdata.com/media/3014/linkedin.png',
+  facebook:      'https://www.shpdata.com/media/3013/facebook.png',
+  twitter:       'https://www.shpdata.com/media/3021/x.png',
+  website:       'https://www.shpdata.com/media/3016/shpsite.png',
+  'star-gold':   'https://www.shpdata.com/media/3017/star-gold.png',
+  'star-green':  'https://www.shpdata.com/media/3018/star-green.png',
+  'star-yellow': 'https://www.shpdata.com/media/3020/star-yellow.png',
+  'star-red':    'https://www.shpdata.com/media/3019/star-red.png',
+};
+
+const LOGOS = [
+  { id:'standard', path:'/media/3015/shp-logo.png',                    label:'Standard' },
+  { id:'skilled',  path:'/media/3022/shp-for-skilled-nursing-logo.png', label:'Skilled Nursing' },
+  { id:'custom',   path:'',                                              label:'Custom…' },
+];
+
+const DEFAULT_CONF = `The information contained in this transmission is privileged and confidential and/or protected health information (PHI) and may be subject to protection under the law, including the Health Insurance Portability and Accountability Act of 1996, as amended (HIPAA). This transmission is intended for the sole use of the individual or entity to whom it is addressed. If you are not the intended recipient, you are notified that any use, dissemination, distribution, printing or copying of this transmission is strictly prohibited and may subject you to criminal or civil penalties. If you have received this transmission in error, please notify the sender immediately and permanently delete this email and any attachments.`;
+
+let selLogo    = 'standard';
+let origImg    = null;   // original Image object
+let photoData  = null;   // processed base64 (current settings)
+let resizedB64 = null;   // same — for download
+
+// ═══════════════════════════════════════════════════════
+//  SVG PLACEHOLDERS (preview fallbacks)
+// ═══════════════════════════════════════════════════════
+function svgIcon(color, text) {
+  const s = `<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25"><rect width="25" height="25" rx="5" fill="${color}"/><text x="12.5" y="17.5" text-anchor="middle" fill="white" font-size="12" font-family="Arial" font-weight="bold">${text}</text></svg>`;
+  return 'data:image/svg+xml;base64,' + btoa(s);
+}
+function svgStar(color) {
+  const s = `<svg xmlns="http://www.w3.org/2000/svg" width="47" height="47"><polygon points="23.5,4 28.7,17.3 43,18.5 32.5,27.6 36.1,41.5 23.5,33.8 10.9,41.5 14.5,27.6 4,18.5 18.3,17.3" fill="${color}"/></svg>`;
+  return 'data:image/svg+xml;base64,' + btoa(s);
+}
+const PREV_ICONS = {
+  linkedin:      svgIcon('#0077b5','in'),
+  facebook:      svgIcon('#1877f2','f'),
+  twitter:       svgIcon('#14171a','X'),
+  website:       svgIcon('#335e82','W'),
+  'star-gold':   svgStar('#f5b800'),
+  'star-green':  svgStar('#3db854'),
+  'star-yellow': svgStar('#e8c800'),
+  'star-red':    svgStar('#e03535'),
+};
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+function init() {
+  buildLogoGrid();
+  // Pre-populate default social URLs
+  setIfEmpty('f-linkedin', 'https://www.linkedin.com/company/shp-data/');
+  setIfEmpty('f-facebook', 'https://www.facebook.com/shpdata');
+  setIfEmpty('f-twitter',  'https://x.com/SHPdata');
+  setIfEmpty('f-website',  'https://www.shpdata.com/');
+  loadStorage();
+  toggleConf(); // show conf body based on initial checked state
+  update();
+}
+function setIfEmpty(id, v) {
+  const el = document.getElementById(id);
+  if (el && !el.value) el.value = v;
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOGO GRID
+// ═══════════════════════════════════════════════════════
+function buildLogoGrid() {
+  const base = getBaseDomain();
+  const grid = document.getElementById('logo-grid');
+  grid.innerHTML = LOGOS.map(l => {
+    let thumb;
+    if (l.id === 'custom') {
+      thumb = `<span style="font-size:22px;color:#aaa;line-height:1;">+</span>`;
+    } else {
+      const src = base + l.path;
+      const fb  = `this.style.display='none';this.nextElementSibling.style.display='flex'`;
+      thumb = `<img src="${src}" alt="${l.label}" onerror="${fb}" style="max-height:32px;max-width:96%;object-fit:contain;">
+               <span style="display:none;font-size:10px;color:var(--muted);align-items:center;justify-content:center;width:100%;height:100%;">LOGO</span>`;
+    }
+    return `<div class="logo-opt${l.id===selLogo?' sel':''}" id="lo-${l.id}" onclick="pickLogo('${l.id}')">
+      <div class="logo-thumb">${thumb}</div>
+      <div class="logo-opt-lbl">${l.label}</div>
+    </div>`;
+  }).join('');
+}
+function pickLogo(id) {
+  selLogo = id;
+  document.querySelectorAll('.logo-opt').forEach(e => e.classList.remove('sel'));
+  document.getElementById('lo-' + id).classList.add('sel');
+  document.getElementById('custom-logo-wrap').style.display = id === 'custom' ? 'block' : 'none';
+  update();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOGGLES
+// ═══════════════════════════════════════════════════════
+function togglePhoto() {
+  const on = document.getElementById('f-has-photo').checked;
+  document.getElementById('photo-section').style.display = on ? 'flex' : 'none';
+  update();
+}
+function toggleStars() {
+  const on = document.getElementById('f-stars').checked;
+  document.getElementById('stars-fields').style.display = on ? 'flex' : 'none';
+  update();
+}
+function toggleConf() {
+  const on = document.getElementById('f-conf').checked;
+  document.getElementById('conf-body').style.display = on ? 'block' : 'none';
+  update();
+}
+function resetConfText() {
+  document.getElementById('f-conf-text').value = DEFAULT_CONF;
+  update();
+}
+
+// ═══════════════════════════════════════════════════════
+//  HIGH-QUALITY IMAGE RESIZE
+// ═══════════════════════════════════════════════════════
+function resizeHQ(imgEl, targetW) {
+  const ratio   = imgEl.height / imgEl.width;
+  const targetH = Math.round(targetW * ratio);
+
+  // Step-down: halve repeatedly until within 2× of target
+  let src = document.createElement('canvas');
+  src.width  = imgEl.naturalWidth  || imgEl.width;
+  src.height = imgEl.naturalHeight || imgEl.height;
+  src.getContext('2d').drawImage(imgEl, 0, 0);
+
+  let w = src.width, h = src.height;
+  while (w > targetW * 2 && h > targetH * 2) {
+    const nw = Math.max(Math.floor(w / 2), targetW);
+    const nh = Math.max(Math.floor(h / 2), targetH);
+    const tmp = document.createElement('canvas');
+    tmp.width = nw; tmp.height = nh;
+    const ctx = tmp.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, nw, nh);
+    src = tmp; w = nw; h = nh;
+  }
+
+  // Final resize to exact dimensions
+  const out = document.createElement('canvas');
+  out.width  = targetW;
+  out.height = targetH;
+  const fctx = out.getContext('2d');
+  fctx.imageSmoothingEnabled = true;
+  fctx.imageSmoothingQuality = 'high';
+  fctx.drawImage(src, 0, 0, targetW, targetH);
+  return out;
+}
+
+function applyCircle(canvas) {
+  const size = Math.min(canvas.width, canvas.height);
+  const out  = document.createElement('canvas');
+  out.width  = size;
+  out.height = size;
+  const ctx  = out.getContext('2d');
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  // Center-crop the source
+  const ox = (canvas.width  - size) / 2;
+  const oy = (canvas.height - size) / 2;
+  ctx.drawImage(canvas, -ox, -oy);
+  return out;
+}
+
+function processPhoto() {
+  if (!origImg) return;
+  const targetW  = Math.max(60, parseInt(val('f-photo-size')) || 100);
+  const useCircle = document.getElementById('f-circle').checked;
+
+  let canvas = resizeHQ(origImg, targetW);
+  if (useCircle) canvas = applyCircle(canvas);
+
+  resizedB64 = canvas.toDataURL('image/png');
+  photoData  = resizedB64;
+
+  const thumb = document.getElementById('photo-thumb');
+  thumb.src = resizedB64;
+  thumb.style.borderRadius = useCircle ? '50%' : '4px';
+
+  const w = canvas.width, h = canvas.height;
+  document.getElementById('photo-dim').textContent = `Output: ${w}×${h}px${useCircle ? ' · circular' : ''}`;
+  update();
+}
+
+function reprocessPhoto() {
+  if (origImg) processPhoto();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PHOTO UPLOAD
+// ═══════════════════════════════════════════════════════
+function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      origImg = img;
+      document.getElementById('upload-zone').style.display  = 'none';
+      document.getElementById('photo-preview').style.display = 'flex';
+      document.getElementById('photo-fname').textContent    = file.name;
+      processPhoto();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function downloadResized() {
+  if (!resizedB64) return;
+  const a = document.createElement('a');
+  a.href     = resizedB64;
+  a.download = (val('f-name').replace(/\s+/g,'-').toLowerCase() || 'headshot') + '.png';
+  a.click();
+}
+function clearPhoto() {
+  origImg = photoData = resizedB64 = null;
+  document.getElementById('f-photo-file').value = '';
+  document.getElementById('upload-zone').style.display   = 'block';
+  document.getElementById('photo-preview').style.display = 'none';
+  update();
+}
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+const val = id => (document.getElementById(id) || {}).value?.trim() ?? '';
+const chk = id => document.getElementById(id)?.checked ?? false;
+
+function getBaseDomain() {
+  return (val('f-base-url') || 'https://www.shpdata.com').replace(/\/$/, '');
+}
+function getImgUrl(key) {
+  return IMG_MAP[key]; // full hardcoded URL — no base domain needed
+}
+function getLogoUrl() {
+  if (selLogo === 'custom') {
+    const c = val('f-custom-logo');
+    return c.startsWith('http') ? c : getBaseDomain() + (c.startsWith('/') ? c : '/' + c);
+  }
+  const logo = LOGOS.find(l => l.id === selLogo) || LOGOS[0];
+  return getBaseDomain() + logo.path;
+}
+function previewImg(key)  { return IMG_MAP[key]; }
+function previewLogo()    { return getLogoUrl(); }
+
+// ═══════════════════════════════════════════════════════
+//  BUILD HTML
+// ═══════════════════════════════════════════════════════
+const S = {
+  tbl:     'vertical-align:-webkit-baseline-middle;font-size:medium;font-family:Arial;',
+  blue:    'color:rgb(51,94,130);',
+  head:    'margin:0px;font-size:15px;color:rgb(51,94,130);',
+  cred:    'font-weight:bold;margin:0px;color:rgb(51,94,130);font-size:12px;line-height:22px;',
+  title:   'font-style:italic;margin:0px;color:rgb(51,94,130);font-size:13px;line-height:22px;',
+  contact: 'text-decoration:none;text-underline:none;color:rgb(51,94,130);font-size:13px;',
+  divider: 'border-right:2px solid rgb(250,167,26);',
+};
+
+function buildHTML(forPreview) {
+  const name   = val('f-name')  || 'Your Name';
+  const cred   = val('f-cred');
+  const title  = val('f-title') || 'Your Title';
+  const direct = val('f-direct');
+  const cell   = val('f-cell');
+  const email  = val('f-email');
+
+  const hasPhoto = chk('f-has-photo');
+  const useCircle = chk('f-circle');
+  const photoUrl  = forPreview
+    ? (photoData || val('f-photo-url') || '')
+    : val('f-photo-url');
+  const photoRadius = useCircle ? 'border-radius:50%;' : '';
+
+  const linkedin = val('f-linkedin');
+  const facebook = val('f-facebook');
+  const twitter  = val('f-twitter');
+  const website  = val('f-website');
+
+  const starsOn  = chk('f-stars');
+  const prompt   = val('f-star-prompt') || 'Please let us know how we did today by clicking below';
+  const sGold    = val('f-star-gold')   || '#';
+  const sGreen   = val('f-star-green')  || '#';
+  const sYellow  = val('f-star-yellow') || '#';
+  const sRed     = val('f-star-red')    || '#';
+
+  const showConf = chk('f-conf');
+  const confText = val('f-conf-text') || DEFAULT_CONF;
+
+  const logoUrl = forPreview ? previewLogo() : getLogoUrl();
+  const iImg    = forPreview ? previewImg    : getImgUrl;
+
+  let h = '';
+
+  // ── STARS ──
+  if (starsOn) {
+    h += `<table cellpadding="6" cellspacing="0" style="${S.tbl}">
+  <tbody><tr><td>
+    <table cellpadding="0" cellspacing="0" style="${S.tbl}"><tbody><tr>
+      <td style="padding:0px;vertical-align:middle;">
+        <p style="font-style:italic;margin:0px;${S.blue}font-size:14px;line-height:22px;">${prompt}</p>
+      </td>
+    </tr></tbody></table>
+  </td></tr></tbody>
+</table>
+<a href="${sGold}"><img border="0" width="47" height="47" src="${iImg('star-gold')}" alt="Excellent"></a><!--
+--><a href="${sGreen}"><img border="0" width="47" height="47" src="${iImg('star-green')}" alt="Good"></a><!--
+--><a href="${sYellow}"><img border="0" width="47" height="47" src="${iImg('star-yellow')}" alt="Average"></a><!--
+--><a href="${sRed}"><img border="0" width="47" height="47" src="${iImg('star-red')}" alt="Poor"></a>
+<table cellpadding="0" cellspacing="0" style="${S.tbl}width:100%;"><tbody><tr><td height="10"></td></tr></tbody></table>
+`;
+  }
+
+  // ── MAIN SIGNATURE ──
+  h += `<table cellpadding="6" cellspacing="0" style="${S.tbl}">
+  <tbody><tr><td>
+    <table cellpadding="0" cellspacing="0" style="${S.tbl}"><tbody><tr>
+      <td style="vertical-align:middle;">
+        <table cellpadding="1" cellspacing="0" style="${S.tbl}"><tbody>`;
+
+  if (hasPhoto && photoUrl) {
+    h += `
+          <tr><td style="text-align:center;"><img src="${photoUrl}" role="presentation" width="100" style="max-width:100px;display:block;${photoRadius}"></td></tr>
+          <tr><td height="10"></td></tr>`;
+  }
+
+  h += `
+          <tr><td style="text-align:center;"><img src="${logoUrl}" role="presentation" width="100" style="max-width:100px;display:block;"></td></tr>
+        </tbody></table>
+      </td>
+      <td style="${S.divider}" width="15"><div></div></td>
+      <td width="20"><div></div></td>
+      <td style="padding:0px;vertical-align:middle;">
+        <table cellpadding="0" cellspacing="0" style="${S.tbl}"><tbody>
+          <tr><td><h3 style="${S.head}">${name}</h3></td></tr>`;
+
+  if (cred) h += `
+          <tr><td><p style="${S.cred}">${cred}</p></td></tr>`;
+
+  h += `
+          <tr><td><p style="${S.title}">${title}</p></td></tr>
+          <tr><td height="4"></td></tr>`;
+
+  if (direct) h += `
+          <tr height="20" style="vertical-align:middle;"><td style="text-decoration:none;padding:0px;${S.blue}">
+            <span style="${S.contact}">Direct: ${direct}</span></td></tr>`;
+  if (cell) h += `
+          <tr height="20" style="vertical-align:middle;"><td style="text-decoration:none;padding:0px;${S.blue}">
+            <span style="${S.contact}">Cell: ${cell}</span></td></tr>`;
+  if (email) h += `
+          <tr height="20" style="vertical-align:middle;"><td style="text-decoration:none;padding:0px;${S.blue}">
+            <a href="mailto:${email}" style="${S.contact}text-decoration:none;">${email}</a></td></tr>`;
+
+  const socials = [
+    { key:'linkedin', url:linkedin },
+    { key:'facebook', url:facebook },
+    { key:'twitter',  url:twitter  },
+    { key:'website',  url:website  },
+  ].filter(s => s.url);
+
+  if (socials.length) {
+    h += `
+          <tr><td height="4"></td></tr>
+          <tr height="30"><td>`;
+    socials.forEach(s => {
+      h += `<a href="${s.url}" style="display:inline-block;text-decoration:none;"><img border="0" width="25" height="25" hspace="4" src="${iImg(s.key)}" alt="${s.key}" style="display:inline-block;vertical-align:middle;"></a>`;
+    });
+    h += `</td></tr>`;
+  }
+
+  h += `
+        </tbody></table>
+      </td>
+    </tr></tbody></table>
+  </td></tr></tbody>
+</table>`;
+
+  // ── CONFIDENTIALITY ──
+  if (showConf && confText) {
+    h += `
+<table cellpadding="0" cellspacing="0" style="${S.tbl}width:100%;"><tbody><tr><td height="10"></td></tr></tbody></table>
+<table cellpadding="6" cellspacing="0" style="${S.tbl}">
+  <tbody><tr><td>
+    <table cellpadding="0" cellspacing="0" style="${S.tbl}"><tbody><tr>
+      <td style="padding:0px;vertical-align:middle;">
+        <p style="font-style:italic;margin:0px;${S.blue}font-size:14px;line-height:22px;">
+          <span style="text-decoration:underline"><em><strong>Email Confidentiality Notice:</strong></em></span>
+          ${confText}
+        </p>
+      </td>
+    </tr></tbody></table>
+  </td></tr></tbody>
+</table>`;
+  }
+
+  return h;
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPDATE PREVIEW
+// ═══════════════════════════════════════════════════════
+function update() {
+  // Update From: preview
+  const name  = val('f-name') || 'Your Name';
+  const email = val('f-email');
+  document.getElementById('prev-from').textContent =
+    name + (email ? ` <${email}>` : ' <yourname@shpdata.com>');
+
+  // Rebuild logo grid (base URL may have changed)
+  buildLogoGrid();
+
+  // Preview — render directly into div so images load without cross-origin issues
+  document.getElementById('preview-sig').innerHTML = buildHTML(true);
+
+  // Code output
+  document.getElementById('html-out').textContent = buildHTML(false);
+  saveStorage();
+}
+
+// ═══════════════════════════════════════════════════════
+//  COPY / DOWNLOAD
+// ═══════════════════════════════════════════════════════
+function copyRawHTML() {
+  copyText(buildHTML(false), '✓ Raw HTML copied');
+}
+
+function downloadHTML() {
+  const a = document.createElement('a');
+  a.href     = URL.createObjectURL(new Blob([buildHTML(false)], { type:'text/html' }));
+  a.download = (val('f-name').replace(/\s+/g,'-').toLowerCase() || 'signature') + '.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('↓ Downloaded!');
+}
+
+// Copy as formatted rich text — pastes correctly into Outlook signature editor
+async function copyForOutlook() {
+  const html = buildHTML(false);
+
+  // Modern approach: write text/html ClipboardItem (Chrome/Edge)
+  if (window.ClipboardItem && navigator.clipboard?.write) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html':  new Blob([html], { type:'text/html' }),
+          'text/plain': new Blob([''],   { type:'text/plain' }),
+        })
+      ]);
+      toast('✓ Formatted signature copied!\nPaste it directly into Outlook\'s signature editor.');
+      return;
+    } catch(e) { /* fall through */ }
+  }
+
+  // Fallback: render to hidden div → select all → execCommand copy
+  const container = document.getElementById('outlook-render');
+  container.innerHTML = html;
+  const range = document.createRange();
+  range.selectNodeContents(container);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  try {
+    document.execCommand('copy');
+    toast('✓ Formatted signature copied!\nPaste it directly into Outlook\'s signature editor.');
+  } catch(e) {
+    toast('⚠ Could not copy formatted. Try "Copy Raw HTML" instead.');
+  }
+  sel.removeAllRanges();
+  container.innerHTML = '';
+}
+
+function copyText(text, msg) {
+  (navigator.clipboard?.writeText(text) || Promise.reject())
+    .then(() => toast(msg))
+    .catch(() => {
+      const t = document.createElement('textarea');
+      t.value = text; document.body.appendChild(t);
+      t.select(); document.execCommand('copy');
+      document.body.removeChild(t);
+      toast(msg);
+    });
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════════════
+function resetForm() {
+  if (!confirm('Clear all fields and start over?')) return;
+  localStorage.removeItem('shp-sig');
+  origImg = photoData = resizedB64 = null;
+  selLogo = 'standard';
+  ['f-name','f-cred','f-title','f-direct','f-cell','f-email',
+   'f-photo-url','f-custom-logo','f-star-gold','f-star-green','f-star-yellow','f-star-red']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('f-photo-size').value = '100';
+  document.getElementById('f-base-url').value   = 'https://www.shpdata.com';
+  document.getElementById('f-star-prompt').value = 'Please let us know how we did today by clicking below';
+  document.getElementById('f-conf-text').value   = DEFAULT_CONF;
+  document.getElementById('f-has-photo').checked = false;
+  document.getElementById('f-circle').checked    = false;
+  document.getElementById('f-stars').checked     = false;
+  document.getElementById('f-conf').checked      = true;
+  togglePhoto(); toggleStars(); toggleConf();
+  clearPhoto();
+  setIfEmpty('f-linkedin','https://www.linkedin.com/company/shp-data/');
+  setIfEmpty('f-facebook','https://www.facebook.com/shpdata');
+  setIfEmpty('f-twitter', 'https://x.com/SHPdata');
+  setIfEmpty('f-website', 'https://www.shpdata.com/');
+  document.getElementById('custom-logo-wrap').style.display = 'none';
+  buildLogoGrid();
+  update();
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOCAL STORAGE
+// ═══════════════════════════════════════════════════════
+const PERSIST = ['f-name','f-cred','f-title','f-direct','f-cell','f-email',
+  'f-photo-url','f-photo-size','f-custom-logo','f-linkedin','f-facebook',
+  'f-twitter','f-website','f-star-prompt','f-star-gold','f-star-green',
+  'f-star-yellow','f-star-red','f-base-url','f-conf-text'];
+const PERSIST_CHK = ['f-has-photo','f-circle','f-stars','f-conf'];
+
+function saveStorage() {
+  try {
+    const d = { _logo:selLogo };
+    PERSIST.forEach(id => d[id] = val(id));
+    PERSIST_CHK.forEach(id => d[id] = chk(id));
+    localStorage.setItem('shp-sig', JSON.stringify(d));
+  } catch(e) {}
+}
+function loadStorage() {
+  try {
+    const raw = localStorage.getItem('shp-sig');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    PERSIST.forEach(id => {
+      if (d[id] != null) { const el=document.getElementById(id); if(el) el.value=d[id]; }
+    });
+    PERSIST_CHK.forEach(id => {
+      if (d[id] != null) {
+        const el=document.getElementById(id); if(el) el.checked=d[id];
+        if (id==='f-has-photo') togglePhoto();
+        if (id==='f-stars')     toggleStars();
+        if (id==='f-conf')      toggleConf();
+      }
+    });
+    if (d._logo) {
+      selLogo = d._logo;
+      if (selLogo==='custom') document.getElementById('custom-logo-wrap').style.display='block';
+    }
+  } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
