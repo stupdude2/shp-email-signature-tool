@@ -41,8 +41,8 @@ body { background:var(--bg); }
 .form-panel { background:var(--surface-2); border-right:1px solid var(--border); padding:20px 16px; display:flex; flex-direction:column; gap:14px; min-height:calc(100vh - 75px); }
 
 /* RIGHT PANEL */
-.right-panel { display:flex; flex-direction:column; min-width:0; position:sticky; top:75px; max-height:calc(100vh - 75px); overflow:hidden; }
-.preview-panel { flex:1; padding:20px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; min-width:0; }
+.right-panel { display:flex; flex-direction:column; min-width:0; position:sticky; top:75px; max-height:calc(100vh - 75px); overflow-y:auto; }
+.preview-panel { flex-shrink:0; padding:20px; display:flex; flex-direction:column; gap:16px; min-width:0; }
 .output-panel { background:var(--blue-dark); padding:20px 20px 24px; border-top:2.5px solid var(--gold); flex-shrink:0; }
 
 /* CARDS */
@@ -124,7 +124,7 @@ hr.sep { border:none; border-top:1px solid var(--border); }
 
 /* PREVIEW */
 .prev-label { font-size:11px; font-weight:600; letter-spacing:.7px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
-.email-shell { background:#fff; border-radius:10px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; max-width:100%; }
+.email-shell { background:#fff; border-radius:10px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:visible; max-width:100%; }
 .email-chrome { background:#f2f5f9; border-bottom:1px solid var(--border); padding:10px 16px; font-size:12px; color:var(--muted); overflow:hidden; }
 .email-chrome div { display:flex; gap:6px; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .email-chrome div:last-child { margin-bottom:0; }
@@ -132,7 +132,7 @@ hr.sep { border:none; border-top:1px solid var(--border); }
 .email-body-text { padding:18px 20px 12px; font-family:Arial,sans-serif; font-size:14px; line-height:1.65; color:#333; }
 .email-body-text p { margin-bottom:12px; }
 .email-divider { border:none; border-top:1px solid #e2e8ef; margin:0 20px; }
-.email-sig-wrap { padding:12px 20px 20px; overflow:hidden; }
+.email-sig-wrap { padding:12px 20px 20px; }
 #preview-sig { font-family:Arial,sans-serif; line-height:normal; font-size:medium; }
 
 /* TIP */
