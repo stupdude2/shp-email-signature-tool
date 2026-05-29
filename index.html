@@ -111,6 +111,9 @@ hr.sep { border:none; border-top:1px solid var(--border); }
 .btn-gold:hover { filter:brightness(1.07); }
 .btn-outlook { background:#0078d4; color:#fff; }
 .btn-outlook:hover { background:#005fa3; }
+.btn-outlook:disabled { background:#5ba3d0; cursor:wait; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:4px; }
 .btn-ghost { background:rgba(255,255,255,.1); color:#fff; border:1px solid rgba(255,255,255,.2); }
 .btn-ghost:hover { background:rgba(255,255,255,.18); }
 .btn-sm { padding:5px 10px; font-size:11.5px; }
@@ -445,11 +448,10 @@ hr.sep { border:none; border-top:1px solid var(--border); }
     <div class="out-hdr">
       <div class="out-hdr-lbl">Generated HTML</div>
       <div class="out-acts">
-        <button class="btn btn-ghost btn-sm" onclick="downloadHTML()">↓ Download .html</button>
-        <button class="btn btn-ghost btn-sm" onclick="copyRawHTML()">Copy Raw HTML</button>
-        <button class="btn btn-outlook" onclick="copyForOutlook()">
+        <button class="btn btn-ghost btn-sm" id="btn-download" onclick="downloadHTML()">↓ Download .html</button>
+        <button class="btn btn-outlook" id="btn-outlook" onclick="copyForOutlook()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8l10 6 10-6"/></svg>
-          Copy for Outlook
+          <span id="btn-outlook-lbl">Copy for Outlook</span>
         </button>
       </div>
     </div>
@@ -899,26 +901,133 @@ function update() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  COPY / DOWNLOAD
+//  IMAGE EMBEDDING
 // ═══════════════════════════════════════════════════════
-function copyRawHTML() {
-  copyText(buildHTML(false), '✓ Raw HTML copied');
+
+// Fetch any URL and return a base64 data URI.
+// Falls back to the original URL on CORS/network failure.
+async function urlToBase64(url) {
+  if (!url || url.startsWith('data:')) return url;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(resp.status);
+    const blob = await resp.blob();
+    return await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(blob);
+    });
+  } catch(e) {
+    console.warn('Could not embed image (CORS or network):', url);
+    return url; // fall back to URL reference
+  }
 }
 
-function downloadHTML() {
+// Build a version of the HTML with every image src replaced by a base64 data URI.
+// The locally-uploaded headshot (photoData) is used directly — no hosting needed.
+async function buildHTMLEmbedded() {
+  // Collect every unique image URL used by the current signature
+  const urlsNeeded = new Set();
+
+  ['linkedin','facebook','twitter','website'].forEach(k => {
+    if (val('f-' + k)) urlsNeeded.add(getImgUrl(k));
+  });
+
+  if (chk('f-stars')) {
+    ['star-gold','star-green','star-yellow','star-red'].forEach(k => urlsNeeded.add(getImgUrl(k)));
+  }
+
+  urlsNeeded.add(getLogoUrl());
+
+  const headshotUrl = val('f-photo-url');
+  if (chk('f-has-photo') && !photoData && headshotUrl) urlsNeeded.add(headshotUrl);
+
+  // Fetch all images in parallel
+  const cache = {};
+  await Promise.all([...urlsNeeded].map(async url => {
+    cache[url] = await urlToBase64(url);
+  }));
+
+  // Start with regular generated HTML
+  let html = buildHTML(false);
+
+  // Swap every URL for its base64 version
+  Object.entries(cache).forEach(([url, b64]) => {
+    html = html.split(url).join(b64);
+  });
+
+  // If headshot was uploaded locally, replace any URL reference with the local base64
+  if (photoData && headshotUrl) {
+    html = html.split(headshotUrl).join(photoData);
+  }
+  // If headshot was uploaded locally but no URL was entered, buildHTML(false) already
+  // used val('f-photo-url') which would be empty — swap nothing, but the preview used
+  // photoData fine. For the final HTML we need to handle this edge case:
+  if (photoData && !headshotUrl) {
+    // buildHTML(false) skips the photo because val('f-photo-url') is empty.
+    // Rebuild with photoData injected as the URL.
+    const fakeUrl = '__HEADSHOT_B64__';
+    const origUrl = document.getElementById('f-photo-url');
+    origUrl.value = fakeUrl;
+    let rebuilt = buildHTML(false);
+    origUrl.value = '';
+    rebuilt = rebuilt.split(fakeUrl).join(photoData);
+    html = rebuilt;
+  }
+
+  return html;
+}
+
+function setBtnLoading(id, loading, loadingLabel, defaultLabel) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.querySelector('span')
+    ? btn.querySelector('span').innerHTML = loading
+        ? `<span class="spinner"></span>${loadingLabel}`
+        : defaultLabel
+    : (btn.textContent = loading ? loadingLabel : defaultLabel);
+}
+
+// ═══════════════════════════════════════════════════════
+//  COPY / DOWNLOAD
+// ═══════════════════════════════════════════════════════
+
+async function downloadHTML() {
+  const btn = document.getElementById('btn-download');
+  if (btn) { btn.disabled = true; btn.textContent = 'Embedding…'; }
+  const html = await buildHTMLEmbedded();
+  if (btn) { btn.disabled = false; btn.textContent = '↓ Download .html'; }
   const a = document.createElement('a');
-  a.href     = URL.createObjectURL(new Blob([buildHTML(false)], { type:'text/html' }));
+  a.href     = URL.createObjectURL(new Blob([html], { type:'text/html' }));
   a.download = (val('f-name').replace(/\s+/g,'-').toLowerCase() || 'signature') + '.html';
   a.click();
   URL.revokeObjectURL(a.href);
-  toast('↓ Downloaded!');
+  toast('↓ Downloaded — images embedded!');
 }
 
-// Copy as formatted rich text — pastes correctly into Outlook signature editor
+// Copy as formatted rich text with all images embedded as base64
 async function copyForOutlook() {
-  const html = buildHTML(false);
+  const lbl = document.getElementById('btn-outlook-lbl');
+  const btn = document.getElementById('btn-outlook');
+  if (btn)  btn.disabled = true;
+  if (lbl)  lbl.innerHTML = '<span class="spinner"></span>Embedding images…';
 
-  // Modern approach: write text/html ClipboardItem (Chrome/Edge)
+  let html;
+  try {
+    html = await buildHTMLEmbedded();
+  } catch(e) {
+    if (btn) btn.disabled = false;
+    if (lbl) lbl.textContent = 'Copy for Outlook';
+    toast('⚠ Error embedding images.');
+    return;
+  }
+
+  if (btn) btn.disabled = false;
+  if (lbl) lbl.textContent = 'Copy for Outlook';
+
+  // Modern: write text/html ClipboardItem (Chrome/Edge)
   if (window.ClipboardItem && navigator.clipboard?.write) {
     try {
       await navigator.clipboard.write([
@@ -927,12 +1036,12 @@ async function copyForOutlook() {
           'text/plain': new Blob([''],   { type:'text/plain' }),
         })
       ]);
-      toast('✓ Formatted signature copied!\nPaste it directly into Outlook\'s signature editor.');
+      toast('✓ Copied with embedded images!\nPaste directly into Outlook\'s signature editor.');
       return;
-    } catch(e) { /* fall through */ }
+    } catch(e) { /* fall through to execCommand */ }
   }
 
-  // Fallback: render to hidden div → select all → execCommand copy
+  // Fallback: render to hidden div → select → execCommand copy
   const container = document.getElementById('outlook-render');
   container.innerHTML = html;
   const range = document.createRange();
@@ -942,9 +1051,9 @@ async function copyForOutlook() {
   sel.addRange(range);
   try {
     document.execCommand('copy');
-    toast('✓ Formatted signature copied!\nPaste it directly into Outlook\'s signature editor.');
+    toast('✓ Copied with embedded images!\nPaste directly into Outlook\'s signature editor.');
   } catch(e) {
-    toast('⚠ Could not copy formatted. Try "Copy Raw HTML" instead.');
+    toast('⚠ Could not copy. Try Download instead.');
   }
   sel.removeAllRanges();
   container.innerHTML = '';
