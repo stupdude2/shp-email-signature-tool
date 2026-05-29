@@ -89,19 +89,7 @@ hr.sep { border:none; border-top:1px solid var(--border); }
 #custom-logo-wrap { display:none; margin-top:4px; }
 
 /* UPLOAD */
-.upload-zone { border:2px dashed var(--border); border-radius:7px; padding:18px; text-align:center; cursor:pointer; transition:all .15s; position:relative; }
-.upload-zone:hover { border-color:var(--blue); background:var(--blue-light); }
-.upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; border:0; padding:0; width:100%; height:100%; }
-.upload-zone input[type=file]:focus { box-shadow:none; }
-.photo-preview { display:none; align-items:center; gap:12px; padding:10px; background:var(--surface-2); border-radius:7px; border:1px solid var(--border); }
-.photo-preview img { width:56px; height:56px; object-fit:cover; border:2px solid var(--gold); flex-shrink:0; }
-.photo-preview .pinfo { flex:1; }
-.photo-preview .pfname { font-size:13px; font-weight:500; color:var(--text); }
-.photo-preview .pdim   { font-size:11px; color:var(--muted); }
-.photo-preview .pacts  { display:flex; gap:6px; margin-top:6px; }
-
-/* QUALITY BAR */
-.quality-row { display:grid; grid-template-columns:1fr 80px; gap:10px; align-items:end; }
+/* QUALITY BAR removed */
 
 /* BUTTONS */
 .btn { padding:7px 14px; border:none; border-radius:6px; font-family:var(--font); font-size:12.5px; font-weight:500; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
@@ -248,49 +236,14 @@ hr.sep { border:none; border-top:1px solid var(--border); }
       </div>
 
       <div id="photo-section" style="display:none;flex-direction:column;gap:10px;">
-        <!-- Upload zone -->
-        <div class="upload-zone" id="upload-zone">
-          <input type="file" id="f-photo-file" accept="image/*" onchange="handlePhoto(this)">
-          <div style="opacity:.5;margin-bottom:6px;">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#335e82" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          </div>
-          <div style="font-size:13px;font-weight:500;color:#335e82;">Upload headshot</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">Click or drag &amp; drop · JPG or PNG</div>
-        </div>
-
-        <!-- Preview after upload -->
-        <div class="photo-preview" id="photo-preview">
-          <img id="photo-thumb" src="" alt="Preview">
-          <div class="pinfo">
-            <div class="pfname" id="photo-fname">photo.jpg</div>
-            <div class="pdim" id="photo-dim">Processing…</div>
-            <div class="pacts">
-              <button class="btn btn-primary btn-sm" onclick="downloadResized()">↓ Download</button>
-              <button class="btn btn-muted btn-sm" onclick="clearPhoto()">✕ Remove</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Output size + circle mask -->
-        <div class="quality-row">
-          <div class="field">
-            <label>Output width <span class="hint">(px)</span></label>
-            <input type="number" id="f-photo-size" value="100" min="60" max="300" step="10" oninput="reprocessPhoto()">
-          </div>
-          <div style="padding-bottom:2px;">
-            <div class="toggle-row" style="padding:0;">
-              <div class="toggle-info"><div class="lbl" style="font-size:12px;">Circle</div></div>
-              <label class="toggle" style="margin-left:8px;">
-                <input type="checkbox" id="f-circle" onchange="reprocessPhoto()">
-                <span class="knob"></span>
-              </label>
-            </div>
-          </div>
-        </div>
-
         <div class="field">
-          <label>Headshot hosted URL <span class="hint">(used in generated HTML)</span></label>
+          <label>Headshot URL</label>
           <input type="url" id="f-photo-url" placeholder="https://www.shpdata.com/media/headshot.png" oninput="update()">
+        </div>
+        <div class="tip" style="font-size:11.5px;">
+          Host your headshot on shpdata.com and paste the URL above.
+          Recommended size: <strong>100–200px wide</strong>. Once CORS is enabled on shpdata.com,
+          the image will embed automatically when you click <strong>Copy for Outlook</strong>.
         </div>
       </div>
 
@@ -492,9 +445,6 @@ const LOGOS = [
 const DEFAULT_CONF = `The information contained in this transmission is privileged and confidential and/or protected health information (PHI) and may be subject to protection under the law, including the Health Insurance Portability and Accountability Act of 1996, as amended (HIPAA). This transmission is intended for the sole use of the individual or entity to whom it is addressed. If you are not the intended recipient, you are notified that any use, dissemination, distribution, printing or copying of this transmission is strictly prohibited and may subject you to criminal or civil penalties. If you have received this transmission in error, please notify the sender immediately and permanently delete this email and any attachments.`;
 
 let selLogo    = 'standard';
-let origImg    = null;   // original Image object
-let photoData  = null;   // processed base64 (current settings)
-let resizedB64 = null;   // same — for download
 
 // ═══════════════════════════════════════════════════════
 //  SVG PLACEHOLDERS (preview fallbacks)
@@ -590,118 +540,7 @@ function resetConfText() {
   update();
 }
 
-// ═══════════════════════════════════════════════════════
-//  HIGH-QUALITY IMAGE RESIZE
-// ═══════════════════════════════════════════════════════
-function resizeHQ(imgEl, targetW) {
-  const ratio   = imgEl.height / imgEl.width;
-  const targetH = Math.round(targetW * ratio);
 
-  // Step-down: halve repeatedly until within 2× of target
-  let src = document.createElement('canvas');
-  src.width  = imgEl.naturalWidth  || imgEl.width;
-  src.height = imgEl.naturalHeight || imgEl.height;
-  src.getContext('2d').drawImage(imgEl, 0, 0);
-
-  let w = src.width, h = src.height;
-  while (w > targetW * 2 && h > targetH * 2) {
-    const nw = Math.max(Math.floor(w / 2), targetW);
-    const nh = Math.max(Math.floor(h / 2), targetH);
-    const tmp = document.createElement('canvas');
-    tmp.width = nw; tmp.height = nh;
-    const ctx = tmp.getContext('2d');
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(src, 0, 0, nw, nh);
-    src = tmp; w = nw; h = nh;
-  }
-
-  // Final resize to exact dimensions
-  const out = document.createElement('canvas');
-  out.width  = targetW;
-  out.height = targetH;
-  const fctx = out.getContext('2d');
-  fctx.imageSmoothingEnabled = true;
-  fctx.imageSmoothingQuality = 'high';
-  fctx.drawImage(src, 0, 0, targetW, targetH);
-  return out;
-}
-
-function applyCircle(canvas) {
-  const size = Math.min(canvas.width, canvas.height);
-  const out  = document.createElement('canvas');
-  out.width  = size;
-  out.height = size;
-  const ctx  = out.getContext('2d');
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-  // Center-crop the source
-  const ox = (canvas.width  - size) / 2;
-  const oy = (canvas.height - size) / 2;
-  ctx.drawImage(canvas, -ox, -oy);
-  return out;
-}
-
-function processPhoto() {
-  if (!origImg) return;
-  const targetW  = Math.max(60, parseInt(val('f-photo-size')) || 100);
-  const useCircle = document.getElementById('f-circle').checked;
-
-  let canvas = resizeHQ(origImg, targetW);
-  if (useCircle) canvas = applyCircle(canvas);
-
-  resizedB64 = canvas.toDataURL('image/png');
-  photoData  = resizedB64;
-
-  const thumb = document.getElementById('photo-thumb');
-  thumb.src = resizedB64;
-  thumb.style.borderRadius = useCircle ? '50%' : '4px';
-
-  const w = canvas.width, h = canvas.height;
-  document.getElementById('photo-dim').textContent = `Output: ${w}×${h}px${useCircle ? ' · circular' : ''}`;
-  update();
-}
-
-function reprocessPhoto() {
-  if (origImg) processPhoto();
-}
-
-// ═══════════════════════════════════════════════════════
-//  PHOTO UPLOAD
-// ═══════════════════════════════════════════════════════
-function handlePhoto(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      origImg = img;
-      document.getElementById('upload-zone').style.display  = 'none';
-      document.getElementById('photo-preview').style.display = 'flex';
-      document.getElementById('photo-fname').textContent    = file.name;
-      processPhoto();
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-function downloadResized() {
-  if (!resizedB64) return;
-  const a = document.createElement('a');
-  a.href     = resizedB64;
-  a.download = (val('f-name').replace(/\s+/g,'-').toLowerCase() || 'headshot') + '.png';
-  a.click();
-}
-function clearPhoto() {
-  origImg = photoData = resizedB64 = null;
-  document.getElementById('f-photo-file').value = '';
-  document.getElementById('upload-zone').style.display   = 'block';
-  document.getElementById('photo-preview').style.display = 'none';
-  update();
-}
 
 // ═══════════════════════════════════════════════════════
 //  HELPERS
@@ -748,11 +587,8 @@ function buildHTML(forPreview) {
   const email  = val('f-email');
 
   const hasPhoto = chk('f-has-photo');
-  const useCircle = chk('f-circle');
-  const photoUrl  = forPreview
-    ? (photoData || val('f-photo-url') || '')
-    : val('f-photo-url');
-  const photoRadius = useCircle ? 'border-radius:50%;' : '';
+  const photoUrl  = val('f-photo-url');
+  const photoRadius = '';
 
   const linkedin = val('f-linkedin');
   const facebook = val('f-facebook');
@@ -926,10 +762,8 @@ async function urlToBase64(url) {
   }
 }
 
-// Build a version of the HTML with every image src replaced by a base64 data URI.
-// The locally-uploaded headshot (photoData) is used directly — no hosting needed.
+// Build HTML with every image src replaced by a base64 data URI.
 async function buildHTMLEmbedded() {
-  // Collect every unique image URL used by the current signature
   const urlsNeeded = new Set();
 
   ['linkedin','facebook','twitter','website'].forEach(k => {
@@ -943,41 +777,18 @@ async function buildHTMLEmbedded() {
   urlsNeeded.add(getLogoUrl());
 
   const headshotUrl = val('f-photo-url');
-  if (chk('f-has-photo') && !photoData && headshotUrl) urlsNeeded.add(headshotUrl);
+  if (chk('f-has-photo') && headshotUrl) urlsNeeded.add(headshotUrl);
 
-  // Fetch all images in parallel
+  // Fetch all in parallel
   const cache = {};
   await Promise.all([...urlsNeeded].map(async url => {
     cache[url] = await urlToBase64(url);
   }));
 
-  // Start with regular generated HTML
   let html = buildHTML(false);
-
-  // Swap every URL for its base64 version
   Object.entries(cache).forEach(([url, b64]) => {
     html = html.split(url).join(b64);
   });
-
-  // If headshot was uploaded locally, replace any URL reference with the local base64
-  if (photoData && headshotUrl) {
-    html = html.split(headshotUrl).join(photoData);
-  }
-  // If headshot was uploaded locally but no URL was entered, buildHTML(false) already
-  // used val('f-photo-url') which would be empty — swap nothing, but the preview used
-  // photoData fine. For the final HTML we need to handle this edge case:
-  if (photoData && !headshotUrl) {
-    // buildHTML(false) skips the photo because val('f-photo-url') is empty.
-    // Rebuild with photoData injected as the URL.
-    const fakeUrl = '__HEADSHOT_B64__';
-    const origUrl = document.getElementById('f-photo-url');
-    origUrl.value = fakeUrl;
-    let rebuilt = buildHTML(false);
-    origUrl.value = '';
-    rebuilt = rebuilt.split(fakeUrl).join(photoData);
-    html = rebuilt;
-  }
-
   return html;
 }
 
@@ -1099,21 +910,17 @@ function toast(msg) {
 function resetForm() {
   if (!confirm('Clear all fields and start over?')) return;
   localStorage.removeItem('shp-sig');
-  origImg = photoData = resizedB64 = null;
   selLogo = 'standard';
   ['f-name','f-cred','f-title','f-direct','f-cell','f-email',
    'f-photo-url','f-custom-logo','f-star-gold','f-star-green','f-star-yellow','f-star-red']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-  document.getElementById('f-photo-size').value = '100';
   document.getElementById('f-base-url') && (document.getElementById('f-base-url').value = 'https://www.shpdata.com');
   document.getElementById('f-star-prompt').value = 'Please let us know how we did today by clicking below';
   document.getElementById('f-conf-text').value   = DEFAULT_CONF;
   document.getElementById('f-has-photo').checked = false;
-  document.getElementById('f-circle').checked    = false;
   document.getElementById('f-stars').checked     = false;
   document.getElementById('f-conf').checked      = false;
   togglePhoto(); toggleStars(); toggleConf();
-  clearPhoto();
   setIfEmpty('f-linkedin','https://www.linkedin.com/company/shp-data/');
   setIfEmpty('f-facebook','https://www.facebook.com/shpdata');
   setIfEmpty('f-twitter', 'https://x.com/SHPdata');
@@ -1127,10 +934,10 @@ function resetForm() {
 //  LOCAL STORAGE
 // ═══════════════════════════════════════════════════════
 const PERSIST = ['f-name','f-cred','f-title','f-direct','f-cell','f-email',
-  'f-photo-url','f-photo-size','f-custom-logo','f-linkedin','f-facebook',
+  'f-photo-url','f-custom-logo','f-linkedin','f-facebook',
   'f-twitter','f-website','f-star-prompt','f-star-gold','f-star-green',
   'f-star-yellow','f-star-red','f-conf-text'];
-const PERSIST_CHK = ['f-has-photo','f-circle','f-stars','f-conf'];
+const PERSIST_CHK = ['f-has-photo','f-stars','f-conf'];
 
 function saveStorage() {
   try {
@@ -1151,7 +958,7 @@ function loadStorage() {
     PERSIST_CHK.forEach(id => {
       if (d[id] != null) {
         const el=document.getElementById(id); if(el) el.checked=d[id];
-        if (id==='f-has-photo') togglePhoto();
+        if (id==='f-has-photo') { togglePhoto(); }
         if (id==='f-stars')     toggleStars();
         if (id==='f-conf')      toggleConf();
       }
