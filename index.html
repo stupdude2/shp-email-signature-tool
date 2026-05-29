@@ -1155,15 +1155,8 @@ async function downloadZip() {
     .concat(urlToFilename[logoUrl] ? [] : ['logo']);
 
   const missingNote = missingImages.length > 0
-    ? `
-NOTE: The following images could not be downloaded automatically due to
-server restrictions: ${missingImages.join(', ')}.
-Copy these files from your existing SHP signature assets folder into
-the same folder as signature.html.
-`
-    : '
-All images were successfully included in this ZIP.
-';
+    ? `\nNOTE: The following images could not be downloaded automatically due to\nserver restrictions: ${missingImages.join(', ')}.\nCopy these files from your existing SHP signature assets folder into\nthe same folder as signature.html.\n`
+    : `\nAll images were successfully included in this ZIP.\n`;
 
   const readme = `SHP EMAIL SIGNATURE
 ===================
