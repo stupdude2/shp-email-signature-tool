@@ -1011,3 +1011,159 @@ async function downloadHTML() {
 
 // Copy as formatted rich text with all images embedded as base64
 async function copyForOutlook() {
+  const lbl = document.getElementById('btn-outlook-lbl');
+  const btn = document.getElementById('btn-outlook');
+  if (btn)  btn.disabled = true;
+  if (lbl)  lbl.innerHTML = '<span class="spinner"></span>Embedding images…';
+
+  let html;
+  try {
+    html = await buildHTMLEmbedded();
+  } catch(e) {
+    if (btn) btn.disabled = false;
+    if (lbl) lbl.textContent = 'Copy for Outlook';
+    toast('⚠ Error embedding images.');
+    return;
+  }
+
+  if (btn) btn.disabled = false;
+  if (lbl) lbl.textContent = 'Copy for Outlook';
+
+  // Modern: write text/html ClipboardItem (Chrome/Edge)
+  if (window.ClipboardItem && navigator.clipboard?.write) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html':  new Blob([html], { type:'text/html' }),
+          'text/plain': new Blob([''],   { type:'text/plain' }),
+        })
+      ]);
+      toast('✓ Copied with embedded images!\nPaste directly into Outlook\'s signature editor.');
+      return;
+    } catch(e) { /* fall through to execCommand */ }
+  }
+
+  // Fallback: render to hidden div → select → execCommand copy
+  const container = document.getElementById('outlook-render');
+  container.innerHTML = html;
+  const range = document.createRange();
+  range.selectNodeContents(container);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  try {
+    document.execCommand('copy');
+    toast('✓ Copied with embedded images!\nPaste directly into Outlook\'s signature editor.');
+  } catch(e) {
+    toast('⚠ Could not copy. Try Download instead.');
+  }
+  sel.removeAllRanges();
+  container.innerHTML = '';
+}
+
+function copyRawHTML() {
+  const html = buildHTML(false);
+  (navigator.clipboard?.writeText(html) || Promise.reject())
+    .then(() => toast('✓ Raw HTML copied'))
+    .catch(() => {
+      const t = document.createElement('textarea');
+      t.value = html; document.body.appendChild(t);
+      t.select(); document.execCommand('copy');
+      document.body.removeChild(t);
+      toast('✓ Raw HTML copied');
+    });
+}
+
+function copyText(text, msg) {
+  (navigator.clipboard?.writeText(text) || Promise.reject())
+    .then(() => toast(msg))
+    .catch(() => {
+      const t = document.createElement('textarea');
+      t.value = text; document.body.appendChild(t);
+      t.select(); document.execCommand('copy');
+      document.body.removeChild(t);
+      toast(msg);
+    });
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════════════
+function resetForm() {
+  if (!confirm('Clear all fields and start over?')) return;
+  localStorage.removeItem('shp-sig');
+  origImg = photoData = resizedB64 = null;
+  selLogo = 'standard';
+  ['f-name','f-cred','f-title','f-direct','f-cell','f-email',
+   'f-photo-url','f-custom-logo','f-star-gold','f-star-green','f-star-yellow','f-star-red']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('f-photo-size').value = '100';
+  document.getElementById('f-base-url') && (document.getElementById('f-base-url').value = 'https://www.shpdata.com');
+  document.getElementById('f-star-prompt').value = 'Please let us know how we did today by clicking below';
+  document.getElementById('f-conf-text').value   = DEFAULT_CONF;
+  document.getElementById('f-has-photo').checked = false;
+  document.getElementById('f-circle').checked    = false;
+  document.getElementById('f-stars').checked     = false;
+  document.getElementById('f-conf').checked      = false;
+  togglePhoto(); toggleStars(); toggleConf();
+  clearPhoto();
+  setIfEmpty('f-linkedin','https://www.linkedin.com/company/shp-data/');
+  setIfEmpty('f-facebook','https://www.facebook.com/shpdata');
+  setIfEmpty('f-twitter', 'https://x.com/SHPdata');
+  setIfEmpty('f-website', 'https://www.shpdata.com/');
+  document.getElementById('custom-logo-wrap').style.display = 'none';
+  buildLogoGrid();
+  update();
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOCAL STORAGE
+// ═══════════════════════════════════════════════════════
+const PERSIST = ['f-name','f-cred','f-title','f-direct','f-cell','f-email',
+  'f-photo-url','f-photo-size','f-custom-logo','f-linkedin','f-facebook',
+  'f-twitter','f-website','f-star-prompt','f-star-gold','f-star-green',
+  'f-star-yellow','f-star-red','f-conf-text'];
+const PERSIST_CHK = ['f-has-photo','f-circle','f-stars','f-conf'];
+
+function saveStorage() {
+  try {
+    const d = { _logo:selLogo };
+    PERSIST.forEach(id => d[id] = val(id));
+    PERSIST_CHK.forEach(id => d[id] = chk(id));
+    localStorage.setItem('shp-sig', JSON.stringify(d));
+  } catch(e) {}
+}
+function loadStorage() {
+  try {
+    const raw = localStorage.getItem('shp-sig');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    PERSIST.forEach(id => {
+      if (d[id] != null) { const el=document.getElementById(id); if(el) el.value=d[id]; }
+    });
+    PERSIST_CHK.forEach(id => {
+      if (d[id] != null) {
+        const el=document.getElementById(id); if(el) el.checked=d[id];
+        if (id==='f-has-photo') togglePhoto();
+        if (id==='f-stars')     toggleStars();
+        if (id==='f-conf')      toggleConf();
+      }
+    });
+    if (d._logo) {
+      selLogo = d._logo;
+      if (selLogo==='custom') document.getElementById('custom-logo-wrap').style.display='block';
+    }
+  } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
